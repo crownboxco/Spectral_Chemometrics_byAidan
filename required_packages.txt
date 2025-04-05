@@ -1,0 +1,10 @@
+numpy
+pandas
+matplotlib
+scipy
+seaborn
+pybaselines
+adjustText
+statsmodels
+scikit-learn
+torch
