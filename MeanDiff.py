@@ -43,7 +43,7 @@ significant_mask = reject  # True where p < 0.05 (FDR corrected)
 class_name_0 = y.unique()[0]
 class_name_1 = y.unique()[1]
 
-target_shifts = [732, 1003, 1450] # Change to your target shifts!
+target_shifts = [732, 1003, 1450, 1509, 600, 1100, 1300, 1500, 900, 1050] # Change to your target shifts!
 target_indices = [np.argmin(np.abs(raman_shifts - target)) for target in target_shifts]
 
 plt.figure(figsize=(12, 5))
@@ -52,16 +52,19 @@ plt.axhline(0, color='gray', linestyle='--')
 
 # Highlight significant points
 plt.scatter(raman_shifts[significant_mask], diff_spectrum[significant_mask],
-            color='red', label='p < 0.05 (FDR)', zorder=3)
+            color='orange', label='p < 0.05 (FDR)', zorder=3)
 
 # Highlight and annotate selected peaks (in blue)
 texts = []
 for idx in target_indices:
     shift = raman_shifts[idx]
     value = diff_spectrum[idx]
-    plt.scatter(shift, value, color='blue', zorder=4)
+    is_significant = significant_mask[idx]
+    
+    color = 'red' if is_significant else 'blue'
+    plt.scatter(shift, value, color=color, zorder=4)
     texts.append(
-        plt.text(shift, value, f"{int(shift)}", color='blue', fontsize=9)
+        plt.text(shift, value, f"{int(shift)}", color=color, fontsize=9)
     )
 
 # Adjust label positions to avoid overlaps
