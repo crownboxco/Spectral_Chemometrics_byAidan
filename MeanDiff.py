@@ -16,38 +16,38 @@ X = df_processed.drop(columns=['Species'])  # Features (Raman intensities)
 y = df_processed['Species']  # Labels (species classification)
 
 class_labels = y.unique()
-class_0_name = class_labels[0]
 class_1_name = class_labels[1]
+class_2_name = class_labels[2]
 
 # Split the data
-X0 = X[y == class_0_name]
 X1 = X[y == class_1_name]
+X2 = X[y == class_2_name]
 
 # Convert Raman shifts to float
 raman_shifts = X.columns.astype(float)
 
 # Compute mean spectra
-mean_0 = X0.mean().values
 mean_1 = X1.mean().values
+mean_2 = X2.mean().values
 
 # Compute difference spectrum
-diff_spectrum = mean_1 - mean_0
+diff_spectrum = mean_2 - mean_1
 
 # Perform t-tests at each wavenumber
-t_vals, p_vals = ttest_ind(X1, X0, axis=0, equal_var=False)
+t_vals, p_vals = ttest_ind(X2, X1, axis=0, equal_var=False)
 
 # Multiple testing correction (FDR or False Discovery Rate--Benjamini-Hochberg Correction)
 reject, pvals_corrected, _, _ = multipletests(p_vals, alpha=0.05, method='fdr_bh')
 significant_mask = reject  # True where p < 0.05 (FDR corrected)
 
-class_name_0 = y.unique()[0]
 class_name_1 = y.unique()[1]
+class_name_2 = y.unique()[2]
 
 target_shifts = [732, 1003, 1450, 1509, 600, 1100, 1300, 1500, 900, 1050] # Change to your target shifts!
 target_indices = [np.argmin(np.abs(raman_shifts - target)) for target in target_shifts]
 
 plt.figure(figsize=(12, 5))
-plt.plot(raman_shifts, diff_spectrum, color='black', label=f"Mean Difference ({class_name_1} - {class_name_0})")
+plt.plot(raman_shifts, diff_spectrum, color='black', label=f"Mean Difference ({class_name_2} - {class_name_1})")
 plt.axhline(0, color='gray', linestyle='--')
 
 # Highlight significant points

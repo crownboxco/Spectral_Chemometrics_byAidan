@@ -15,14 +15,14 @@ X = df_processed.drop(columns=['Species'])  # Features (Raman intensities)
 y = df_processed['Species']  # Labels (species classification)
 
 # Convert labels to numeric and separate classes
-df_class_0 = X[y == y.unique()[0]]
 df_class_1 = X[y == y.unique()[1]]
+df_class_2 = X[y == y.unique()[2]]
 
 # Get Raman shifts (assumed to be in order)
 raman_shifts = X.columns.astype(float)
 
 # Stack both classes together
-X_all = pd.concat([df_class_0, df_class_1], axis=0)
+X_all = pd.concat([df_class_1, df_class_2], axis=0)
 X_all = detrend(X_all, axis=0)  # Remove baseline (optional)
 
 # Mean center the spectra (important for 2D-COS)
@@ -36,14 +36,14 @@ hilbert_transformed = hilbert(X_mean_centered, axis=0)
 async_matrix = np.imag(np.dot(X_mean_centered.T, hilbert_transformed)) / X_mean_centered.shape[0]
 
 # --- Mean spectra per class ---
-mean_0 = np.mean(df_class_0.values, axis=0)
 mean_1 = np.mean(df_class_1.values, axis=0)
+mean_2 = np.mean(df_class_2.values, axis=0)
 
-class_name_0 = y.unique()[0]
 class_name_1 = y.unique()[1]
+class_name_2 = y.unique()[2]
 
 # --- Plotting ---
-def plot_2d_contour(matrix, title, raman_shifts, top_mean, side_mean, top_label=class_name_1, side_label=class_name_0):
+def plot_2d_contour(matrix, title, raman_shifts, top_mean, side_mean, top_label=class_name_1, side_label=class_name_1):
     fig = plt.figure(figsize=(10, 10))
     gs = gridspec.GridSpec(2, 2, width_ratios=[1, 6], height_ratios=[1, 6],
                            wspace=0.05, hspace=0.05)
@@ -87,6 +87,6 @@ def plot_2d_contour(matrix, title, raman_shifts, top_mean, side_mean, top_label=
     plt.show()
 
 # Call the plotting function
-plot_2d_contour(async_matrix, "Asynchronous 2D Raman Correlation Map", raman_shifts, top_mean=mean_1, side_mean=mean_0)
-plot_2d_contour(sync_matrix, "Synchronous 2D Raman Correlation Map", raman_shifts, top_mean=mean_1, side_mean=mean_0)
+plot_2d_contour(async_matrix, "Asynchronous 2D Raman Correlation Map", raman_shifts, top_mean=mean_1, side_mean=mean_1)
+plot_2d_contour(sync_matrix, "Synchronous 2D Raman Correlation Map", raman_shifts, top_mean=mean_1, side_mean=mean_1)
 

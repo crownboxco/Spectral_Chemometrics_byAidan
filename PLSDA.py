@@ -69,7 +69,7 @@ y_pred_labels = np.argmax(y_pred_test, axis=1)
 final_acc = accuracy_score(y_test_labels, y_pred_labels)
 print(f"Optimized PLS-DA Accuracy: {final_acc:.4f}")
 
-print(classification_report(y_test_labels, y_pred_labels, target_names=label_encoder.classes_, digits = 4))
+print(classification_report(y_test_labels, y_pred_labels, target_names=label_encoder.classes_, digits = 4, zero_division=0))
 
 # Create the confusion matrix
 cm_pls = confusion_matrix(y_test_labels, y_pred_labels)

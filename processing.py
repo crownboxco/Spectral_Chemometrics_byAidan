@@ -29,11 +29,23 @@ baseline_corrected = np.array([baseline_correction(spec) for spec in trimmed_int
 # Apply Savitzky-Golay filter (2nd order, window size = # of data points to smooth at a time)
 smoothed_intensity = savgol_filter(baseline_corrected, window_length=7, polyorder=1, axis=1)
 
-# Do Min-Max normalization
-def normalize_spectrum(smoothed_intensity):
-    return (smoothed_intensity - np.min(smoothed_intensity)) / (np.max(smoothed_intensity) - np.min(smoothed_intensity))
+# # Do Min-Max normalization
+# def normalize_spectrum_per_row(intensities):
+#     min_vals = np.min(intensities, axis=1, keepdims=True)
+#     max_vals = np.max(intensities, axis=1, keepdims=True)
+#     return (intensities - min_vals) / (max_vals - min_vals)
 
-df_normalized = normalize_spectrum(smoothed_intensity)
+# df_normalized = normalize_spectrum_per_row(smoothed_intensity)
+
+# Area normalization per spectrum
+def area_normalize_spectra(intensities):
+    area = np.sum(intensities, axis=1, keepdims=True)
+    # Avoid division by zero
+    area[area == 0] = 1e-10
+    normalized = intensities / area
+    return normalized + 1
+
+df_normalized = area_normalize_spectra(smoothed_intensity)
 
 # Convert back to DataFrame
 df_processed = pd.DataFrame(df_normalized, columns=trimmed_shifts)
@@ -47,7 +59,7 @@ print(f"Processed data saved to {processed_file_path}")
 ##### PLOTTTING ########
 
 # Select a random spectrum (or specify an index)
-spectrum_idx = 1  # Change this to visualize a different spectrum
+spectrum_idx = 20  # Change this to visualize a different spectrum
 
 # Extract data for plotting
 original_shift = raman_shifts
@@ -88,12 +100,13 @@ plt.legend()
 plt.grid()
 
 # Compute mean and standard deviation for each species
-selected_classes = ["SAME", "SPICE"]
-shifts = {"SAME": 0.0}
+selected_classes = ["SAME", "SPICE", "NP40"]
+shifts = {"SPICE": 0.0, "NP40": 0.0}
 
 class_colors = {
     "SAME": "green",   # or any other valid color name or hex code
-    "SPICE": "red"
+    "SPICE": "red",
+    "NP40": "blue"
 }
 species_groups = df_processed.groupby("Species").mean()
 species_std = df_processed.groupby("Species").std()
