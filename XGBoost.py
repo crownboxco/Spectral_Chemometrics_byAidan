@@ -28,8 +28,8 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, stratify = y, test_siz
 
 xgb_param_grid = {
     'learning_rate': [0.01, 0.1, 0.2],
-    'max_depth': [3, 6, 10],
-    'n_estimators': [50, 100, 200, 250, 500]
+    'max_depth': [1, 3, 6, 10], 
+    'n_estimators': [50, 100, 200, 500]
 }
 
 xgb_clf = xgb.XGBClassifier(objective='multi:softmax', num_class=len(set(y_train)), eval_metric='mlogloss', random_state=42)
@@ -61,4 +61,40 @@ ax = sns.heatmap((cm_normalized_xgb), annot=cm_xgb, fmt='d', cmap='Blues',
 plt.xlabel('Predicted Label')
 plt.ylabel('True Label')
 plt.title("XGBoost Confusion Matrix")
+plt.show()
+
+# === Plot Feature Importance Across Raman Shifts with Annotations (XGBoost) ===
+importances = best_xgb_clf.feature_importances_
+
+# Extract Raman shift values from column names
+raman_shifts = np.array([float(shift) for shift in X.columns])
+
+# Sort by shift (in case columns are out of order)
+sorted_idx = np.argsort(raman_shifts)
+raman_shifts = raman_shifts[sorted_idx]
+importances = importances[sorted_idx]
+
+# Begin plot
+plt.figure(figsize=(10, 4))
+plt.plot(raman_shifts, importances, color='darkgreen', linewidth=1.5)
+plt.xlabel("Raman Shift (cm⁻¹)")
+plt.ylabel("Variable Importance")
+plt.title("XGBoost Variable Importance Plot")
+plt.grid(True, linestyle='--', alpha=0.5)
+
+# Add vertical lines and labels at specific Raman bands
+target_lines = [730, 1003, 1172, 1449, 1603]
+ymax = importances.max()
+for x in target_lines:
+    plt.axvline(x=x, color='blue', linestyle='--', linewidth=1.5)
+    plt.text(
+        x, ymax * 1.2, f"{x}",
+        fontsize=10, color='blue', rotation=90,
+        ha='center', va='top',
+        bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.2')
+    )
+
+# Adjust y-axis to accommodate label height
+plt.ylim(top=ymax * 1.22)
+plt.tight_layout()
 plt.show()

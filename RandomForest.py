@@ -29,12 +29,12 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, stratify= y, test_size
 # Define parameter grid for Random Forest
 rf_param_grid = {
     'n_estimators': [50, 100, 200, 500],  # Number of trees
-    'max_depth': [None, 1, 5, 10, 20],  # Maximum depth of trees
+    'max_depth': [1, 3, 5, 10, 20],  # Maximum depth of trees
     'min_samples_split': [2, 5, 10]  # Minimum samples to split
 }
 
 # Initialize Random Forest model
-rf_clf = RandomForestClassifier(random_state=42)
+rf_clf = RandomForestClassifier()
 
 # Grid search with cross-validation
 rf_grid_search = GridSearchCV(rf_clf, rf_param_grid, cv=5, scoring='accuracy', n_jobs=-1)
@@ -64,4 +64,40 @@ sns.heatmap((cm_normalized_rf), annot=cm_rf, fmt='d', cmap='Blues',
 plt.xlabel('Predicted Label')
 plt.ylabel('True Label')
 plt.title("Random Forest Confusion Matrix")
+plt.show()
+
+# === Plot Feature Importance Across Raman Shifts ===
+importances = best_rf_clf.feature_importances_
+
+# Extract Raman shift values from column names
+raman_shifts = np.array([float(shift) for shift in X.columns])
+
+# Sort by shift (optional, if not already in order)
+sorted_idx = np.argsort(raman_shifts)
+raman_shifts = raman_shifts[sorted_idx]
+importances = importances[sorted_idx]
+
+# Begin plot
+plt.figure(figsize=(10, 4))
+plt.plot(raman_shifts, importances, color='darkorange', linewidth=1.5)
+plt.xlabel("Raman Shift (cm⁻¹)")
+plt.ylabel("Variable Importance")
+plt.title("Random Forest Variable Importance Plot")
+plt.grid(True, linestyle='--', alpha=0.5)
+
+# Add vertical lines and labels at key Raman shifts
+target_lines = [730, 1003, 1172, 1449, 1603]
+ymax = importances.max()
+for x in target_lines:
+    plt.axvline(x=x, color='blue', linestyle='--', linewidth=1.5)
+    plt.text(
+        x, ymax * 1.2, f"{x}",
+        fontsize=10, color='blue', rotation=90,
+        ha='center', va='top',
+        bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.2')
+    )
+
+# Adjust y-axis limit to make room for the labels
+plt.ylim(top=ymax * 1.22)
+plt.tight_layout()
 plt.show()

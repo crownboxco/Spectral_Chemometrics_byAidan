@@ -60,5 +60,44 @@ sns.heatmap((cm_normalized_logreg), annot=cm_logreg, fmt='d', cmap='Blues',
             vmin=0, vmax=1)
 plt.xlabel('Predicted Label')
 plt.ylabel('True Label')
-plt.title("Random Forest Confusion Matrix")
+plt.title("Logistic Regression Confusion Matrix")
+plt.show()
+
+# === Plot Logistic Regression Feature Importance Across Raman Shifts ===
+# For multi-class, best_logreg.coef_ has shape (n_classes, n_features)
+# We'll take the L2-norm of the coefficients across all classes for each feature
+coef = best_logreg.coef_
+logreg_importance = np.linalg.norm(coef, axis=0)  # shape: (n_features,)
+
+# Raman shifts from column names
+raman_shifts = np.array([float(shift) for shift in X.columns])
+assert len(raman_shifts) == len(logreg_importance), "Mismatch between features and importances!"
+
+# Sort by shift
+sorted_idx = np.argsort(raman_shifts)
+raman_shifts = raman_shifts[sorted_idx]
+logreg_importance = logreg_importance[sorted_idx]
+
+# Plot
+plt.figure(figsize=(10, 4))
+plt.plot(raman_shifts, logreg_importance, color='teal', linewidth=1.5)
+plt.xlabel("Raman Shift (cm⁻¹)")
+plt.ylabel("Variable Importance")
+plt.title("Logistic Regression Variable Importance Plot")
+plt.grid(True, linestyle='--', alpha=0.5)
+
+# Annotate known Raman shifts
+target_lines = [730, 1003, 1172, 1449, 1603]
+ymax = logreg_importance.max()
+for x in target_lines:
+    plt.axvline(x=x, color='blue', linestyle='--', linewidth=1.5)
+    plt.text(
+        x, ymax * 1.2, f"{x}",
+        fontsize=10, color='blue', rotation=90,
+        ha='center', va='top',
+        bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.2')
+    )
+
+plt.ylim(top=ymax * 1.22)
+plt.tight_layout()
 plt.show()
