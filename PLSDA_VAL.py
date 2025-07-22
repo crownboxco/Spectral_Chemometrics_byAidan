@@ -1,18 +1,17 @@
-# Change group name on lines 19-20.
 import pandas as pd
 import numpy as np
 from sklearn.cross_decomposition import PLSRegression
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import accuracy_score, roc_curve, auc, confusion_matrix, classification_report
 import seaborn as sns
-from sklearn.preprocessing import LabelEncoder, OneHotEncoder
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder, label_binarize
 from sklearn.model_selection import KFold
+from imblearn.over_sampling import RandomOverSampler
 import joblib
 
 # Load the preprocessed dataset
-file_path = "processed_Raman_data.csv"
+file_path = "processed_Species_data.csv"
 df_processed = pd.read_csv(file_path)
 
 # Convert dataframe to numpy array for training
@@ -59,6 +58,11 @@ for n in range(2, 10):
 
 print(f"Best PLS-DA n_components: {best_n_components}")
 
+# Apply balancing for unbalanced data
+ros = RandomOverSampler(random_state=42)
+X_train_bal, y_train_bal = ros.fit_resample(X_train, y_train_labels)
+Y_train_bal_onehot = onehot_encoder.fit_transform(y_train_bal.reshape(-1, 1))
+
 # Train best model on full training set
 best_pls = PLSRegression(n_components=best_n_components)
 best_pls.fit(X_train, y_train_enc)
@@ -93,7 +97,7 @@ sns.heatmap(cm_normalized, annot=cm_pls, fmt='d', cmap='Blues',
             vmin=0, vmax=1)
 plt.xlabel('Predicted Label')
 plt.ylabel('True Label')
-plt.title("PLS-DA Confusion Matrix")
+plt.title("PLSDA Confusion Matrix")
 
 # === Plot PLS-DA Feature Importance Across Raman Shifts with Annotations ===
 coef = best_pls.coef_
@@ -116,7 +120,7 @@ plt.figure(figsize=(10, 4))
 plt.plot(raman_shifts, pls_importance, color='purple', linewidth=1.5)
 plt.xlabel("Raman Shift (cm⁻¹)")
 plt.ylabel("Variable Importance")
-plt.title("PLS-DA Variable Importance Plot")
+plt.title("PLSDA Variable Importance Plot")
 plt.grid(True, linestyle='--', alpha=0.5)
 
 # Add peak annotations
@@ -132,5 +136,47 @@ for x in target_lines:
     )
 
 plt.ylim(top=ymax * 1.22)
+plt.tight_layout()
+
+# === Compute simulated "probabilities" from PLSDA (continuous outputs) ===
+y_score = best_pls.predict(X_test)
+
+# Binarize labels for ROC
+y_test_bin = label_binarize(y_test_labels, classes=np.arange(len(class_names)))
+n_classes = y_test_bin.shape[1]
+
+# Define your manual color mapping
+custom_colors = {
+    "NP40": "red",
+    "SAME": "green",
+    "SPICE": "blue"
+}
+
+# Compute and plot ROC curves
+fpr = dict()
+tpr = dict()
+roc_auc = dict()
+
+plt.figure(figsize=(8, 6))
+
+# Use label encoder to get class names from 0,1,2...
+class_names = label_encoder.inverse_transform(np.arange(n_classes))
+
+for i in range(n_classes):
+    class_name = class_names[i]
+    fpr[i], tpr[i], _ = roc_curve(y_test_bin[:, i], y_score[:, i])
+    roc_auc[i] = auc(fpr[i], tpr[i])
+    
+    color = custom_colors.get(class_name, "gray")
+    plt.plot(fpr[i], tpr[i], lw=2, color=color, label=f'{class_name} (AUC = {roc_auc[i]:.2f})')
+
+plt.plot([0, 1], [0, 1], 'k--', lw=1)
+plt.xlim([-0.01, 1.01])
+plt.ylim([-0.01, 1.01])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('PLSDA Multiclass ROC Curve')
+plt.legend(loc="lower right", fontsize=9)
+plt.grid(True, linestyle='--', alpha=0.5)
 plt.tight_layout()
 plt.show()

@@ -1,18 +1,16 @@
-# Change group name on lines 19-20.
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import accuracy_score, roc_curve, auc, confusion_matrix, classification_report
 import seaborn as sns
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, label_binarize
 from sklearn.model_selection import GridSearchCV
 import joblib
 
 # Load the preprocessed dataset
-file_path = "processed_Raman_data.csv"
+file_path = "processed_Species_data.csv"
 df_processed = pd.read_csv(file_path)
 
 # Convert dataframe to numpy array for training
@@ -51,7 +49,7 @@ best_rf_params = rf_grid_search.best_params_
 print("Best Random Forest Parameters:", best_rf_params)
 
 # Train best model
-best_rf_clf = RandomForestClassifier(**best_rf_params, random_state=42)
+best_rf_clf = RandomForestClassifier(**best_rf_params, class_weight='balanced', random_state=42)
 best_rf_clf.fit(X_train, y_train)
 y_pred_rf_best = best_rf_clf.predict(X_test)
 rf_best_accuracy = accuracy_score(y_test, y_pred_rf_best)
@@ -77,7 +75,7 @@ sns.heatmap((cm_normalized_rf), annot=cm_rf, fmt='d', cmap='Blues',
             vmin=0, vmax=1)
 plt.xlabel('Predicted Label')
 plt.ylabel('True Label')
-plt.title("Random Forest Confusion Matrix")
+plt.title("RFDA Confusion Matrix")
 plt.show()
 
 # === Plot Feature Importance Across Raman Shifts ===
@@ -96,7 +94,7 @@ plt.figure(figsize=(10, 4))
 plt.plot(raman_shifts, importances, color='darkorange', linewidth=1.5)
 plt.xlabel("Raman Shift (cm⁻¹)")
 plt.ylabel("Variable Importance")
-plt.title("Random Forest Variable Importance Plot")
+plt.title("RFDA Variable Importance Plot")
 plt.grid(True, linestyle='--', alpha=0.5)
 
 # Add vertical lines and labels at key Raman shifts
@@ -113,5 +111,49 @@ for x in target_lines:
 
 # Adjust y-axis limit to make room for the labels
 plt.ylim(top=ymax * 1.22)
+plt.tight_layout()
+
+# === ROC Curve for Multiclass Random Forest ===
+# Binarize test labels
+y_test_bin = label_binarize(y_test, classes=np.arange(len(class_names)))
+n_classes = y_test_bin.shape[1]
+
+# Predict class probabilities
+y_score = best_rf_clf.predict_proba(X_test)
+
+# Define manual colors (optional)
+custom_colors = {
+    "NP40": "red",
+    "SAME": "green",
+    "SPICE": "blue"
+}
+
+# Use inverse transform to get class name strings
+class_names_str = label_encoder.inverse_transform(np.arange(n_classes))
+
+# Compute ROC and AUC per class
+fpr = dict()
+tpr = dict()
+roc_auc = dict()
+
+plt.figure(figsize=(8, 6))
+
+for i in range(n_classes):
+    class_name = class_names_str[i]
+    fpr[i], tpr[i], _ = roc_curve(y_test_bin[:, i], y_score[:, i])
+    roc_auc[i] = auc(fpr[i], tpr[i])
+
+    color = custom_colors.get(class_name, None)
+    plt.plot(fpr[i], tpr[i], lw=2, label=f'{class_name} (AUC = {roc_auc[i]:.2f})', color=color)
+
+# Plot chance line
+plt.plot([0, 1], [0, 1], 'k--', lw=1)
+plt.xlim([-0.01, 1.01])
+plt.ylim([-0.01, 1.01])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('RFDA Multiclass ROC Curve')
+plt.legend(loc="lower right", fontsize=9)
+plt.grid(True, linestyle='--', alpha=0.5)
 plt.tight_layout()
 plt.show()

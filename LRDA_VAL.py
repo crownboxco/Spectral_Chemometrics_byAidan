@@ -1,18 +1,15 @@
-# Change group name on lines 19-20.
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.metrics import accuracy_score, roc_curve, auc, confusion_matrix, classification_report
 import seaborn as sns
-from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import GridSearchCV
+from sklearn.preprocessing import LabelEncoder, label_binarize
 from sklearn.linear_model import LogisticRegression
 import joblib
 
 # Load the preprocessed dataset
-file_path = "processed_Raman_data.csv"
+file_path = "processed_Species_data.csv"
 df_processed = pd.read_csv(file_path)
 
 # Convert dataframe to numpy array for training
@@ -41,7 +38,7 @@ best_logreg_params = logreg_grid_search.best_params_
 print("Best Logistic Regression Parameters:", best_logreg_params)
 
 # Train best model
-best_logreg = LogisticRegression(**best_logreg_params)
+best_logreg = LogisticRegression(**best_logreg_params, class_weight='balanced')
 best_logreg.fit(X_train, y_train)
 y_pred_logreg_best = best_logreg.predict(X_test)
 logreg_best_accuracy = accuracy_score(y_test, y_pred_logreg_best)
@@ -55,7 +52,7 @@ joblib.dump(best_logreg, model_path)
 encoder_path = "label_encoder_lr.pkl"
 joblib.dump(label_encoder, encoder_path)
 
-print(classification_report(y_test, y_pred_logreg_best, target_names=label_encoder.classes_, digits = 4))
+print(classification_report(y_test, y_pred_logreg_best, target_names=label_encoder.classes_, digits = 4, zero_division=0))
 
 # Generate Confusion Matrices
 cm_logreg = confusion_matrix(y_test, y_pred_logreg_best)
@@ -68,7 +65,7 @@ sns.heatmap((cm_normalized_logreg), annot=cm_logreg, fmt='d', cmap='Blues',
             vmin=0, vmax=1)
 plt.xlabel('Predicted Label')
 plt.ylabel('True Label')
-plt.title("Logistic Regression Confusion Matrix")
+plt.title("LRDA Confusion Matrix")
 plt.show()
 
 # === Plot Logistic Regression Feature Importance Across Raman Shifts ===
@@ -91,7 +88,7 @@ plt.figure(figsize=(10, 4))
 plt.plot(raman_shifts, logreg_importance, color='teal', linewidth=1.5)
 plt.xlabel("Raman Shift (cm⁻¹)")
 plt.ylabel("Variable Importance")
-plt.title("Logistic Regression Variable Importance Plot")
+plt.title("LRDA Variable Importance Plot")
 plt.grid(True, linestyle='--', alpha=0.5)
 
 # Annotate known Raman shifts
@@ -107,5 +104,46 @@ for x in target_lines:
     )
 
 plt.ylim(top=ymax * 1.22)
+plt.tight_layout()
+
+# Binarize labels for multiclass ROC
+y_test_bin = label_binarize(y_test, classes=np.arange(len(class_names)))
+n_classes = y_test_bin.shape[1]
+
+# Predict probabilities
+y_score = best_logreg.predict_proba(X_test)
+
+# Define your manual color mapping
+custom_colors = {
+    "NP40": "red",
+    "SAME": "green",
+    "SPICE": "blue"
+}
+
+# Compute and plot ROC curves
+fpr = dict()
+tpr = dict()
+roc_auc = dict()
+
+plt.figure(figsize=(8, 6))
+
+for i in range(n_classes):
+    class_name = class_names[i]
+    fpr[i], tpr[i], _ = roc_curve(y_test_bin[:, i], y_score[:, i])
+    roc_auc[i] = auc(fpr[i], tpr[i])
+    
+    # Use custom color or fallback to gray
+    color = custom_colors.get(class_name, "gray")
+    
+    plt.plot(fpr[i], tpr[i], lw=2, color=color, label=f'{class_name} (AUC = {roc_auc[i]:.2f})')
+
+plt.plot([0, 1], [0, 1], 'k--', lw=1)
+plt.xlim([-0.01, 1.01])
+plt.ylim([-0.01, 1.01])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('LRDA Multiclass ROC Curve')
+plt.legend(loc="lower right", fontsize=9)
+plt.grid(True, linestyle='--', alpha=0.5)
 plt.tight_layout()
 plt.show()

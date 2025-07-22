@@ -1,18 +1,17 @@
-# Change group name on lines 19-20.
 import pandas as pd
 import numpy as np
 import xgboost as xgb
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import accuracy_score, roc_curve, auc, confusion_matrix, classification_report
 import seaborn as sns
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, label_binarize
 from sklearn.model_selection import GridSearchCV
+from sklearn.utils.class_weight import compute_sample_weight
 import joblib
 
 # Load the preprocessed dataset
-file_path = "processed_Raman_data.csv"
+file_path = "processed_Species_data.csv"
 df_processed = pd.read_csv(file_path)
 
 # Convert dataframe to numpy array for training
@@ -40,9 +39,12 @@ xgb_grid_search.fit(X_train, y_train)
 best_xgb_params = xgb_grid_search.best_params_
 print("Best XGBoost Parameters:", best_xgb_params)
 
+# Compute sample weights for training data
+sample_weights = compute_sample_weight(class_weight='balanced', y=y_train)
+
 # Train best model
 best_xgb_clf = xgb.XGBClassifier(**best_xgb_params, random_state=42)
-best_xgb_clf.fit(X_train, y_train)
+best_xgb_clf.fit(X_train, y_train, sample_weight=sample_weights)
 y_pred_xgb_best = best_xgb_clf.predict(X_test)
 xgb_best_accuracy = accuracy_score(y_test, y_pred_xgb_best)
 print(f"Optimized XGBoost Accuracy: {xgb_best_accuracy:.4f}")
@@ -68,7 +70,7 @@ ax = sns.heatmap((cm_normalized_xgb), annot=cm_xgb, fmt='d', cmap='Blues',
             vmin=0, vmax=1)
 plt.xlabel('Predicted Label')
 plt.ylabel('True Label')
-plt.title("XGBoost Confusion Matrix")
+plt.title("XGBDA Confusion Matrix")
 
 # === Plot Feature Importance Across Raman Shifts with Annotations (XGBoost) ===
 importances = best_xgb_clf.feature_importances_
@@ -86,7 +88,7 @@ plt.figure(figsize=(10, 4))
 plt.plot(raman_shifts, importances, color='darkgreen', linewidth=1.5)
 plt.xlabel("Raman Shift (cm⁻¹)")
 plt.ylabel("Variable Importance")
-plt.title("XGBoost Variable Importance Plot")
+plt.title("XGBDA Variable Importance Plot")
 plt.grid(True, linestyle='--', alpha=0.5)
 
 # Add vertical lines and labels at specific Raman bands
@@ -103,5 +105,49 @@ for x in target_lines:
 
 # Adjust y-axis to accommodate label height
 plt.ylim(top=ymax * 1.22)
+plt.tight_layout()
+
+# === Multiclass ROC Curve for XGBoost ===
+# Binarize test labels
+y_test_bin = label_binarize(y_test, classes=np.arange(len(class_names)))
+n_classes = y_test_bin.shape[1]
+
+# Get class probabilities
+y_score = best_xgb_clf.predict_proba(X_test)
+
+# Define optional color map (manually or automatically)
+custom_colors = {
+    "NP40": "red",
+    "SAME": "green",
+    "SPICE": "blue"
+}
+
+# Get class name strings for plotting
+class_names_str = label_encoder.inverse_transform(np.arange(n_classes))
+
+# Compute ROC curve and AUC for each class
+fpr = dict()
+tpr = dict()
+roc_auc = dict()
+
+plt.figure(figsize=(8, 6))
+
+for i in range(n_classes):
+    class_name = class_names_str[i]
+    fpr[i], tpr[i], _ = roc_curve(y_test_bin[:, i], y_score[:, i])
+    roc_auc[i] = auc(fpr[i], tpr[i])
+
+    color = custom_colors.get(class_name, None)  # fallback = default
+    plt.plot(fpr[i], tpr[i], lw=2, label=f"{class_name} (AUC = {roc_auc[i]:.2f})", color=color)
+
+# Plot baseline
+plt.plot([0, 1], [0, 1], 'k--', lw=1)
+plt.xlim([-0.01, 1.01])
+plt.ylim([-0.01, 1.01])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('XGBDA Multiclass ROC Curve')
+plt.legend(loc="lower right", fontsize=9)
+plt.grid(True, linestyle='--', alpha=0.5)
 plt.tight_layout()
 plt.show()

@@ -32,26 +32,38 @@ predicted_labels = label_encoder.inverse_transform(y_pred)
 # === Output predictions ===
 df_external['Predicted_Label'] = predicted_labels
 
-# === Optional: Evaluate if true labels are available ===
 if 'Species' in df_external.columns:
-    y_true = label_encoder.transform(df_external['Species'])
+    y_true_str = df_external['Species']
+    y_true = label_encoder.transform(y_true_str)
+
+    # Filter out unused classes from label encoder for reporting
+    present_labels = np.unique(np.concatenate((y_true, y_pred)))
+    present_class_names = label_encoder.inverse_transform(present_labels)
+
     accuracy = accuracy_score(y_true, y_pred)
     print(f"\nExternal Data Accuracy: {accuracy:.4f}")
     print("\nClassification Report:\n")
-    print(classification_report(y_true, y_pred, target_names=label_encoder.classes_, digits=4, zero_division=0))
+    print(classification_report(
+        y_true, y_pred,
+        labels=present_labels,
+        target_names=present_class_names,
+        digits=4,
+        zero_division=0
+    ))
 
     # Confusion Matrix
-    cm = confusion_matrix(y_true, y_pred)
-    cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    cm = confusion_matrix(y_true, y_pred, labels=present_labels)
+    cm_normalized = cm.astype('float') / cm.sum(axis=1, keepdims=True)
 
     plt.figure(figsize=(8, 6))
     sns.heatmap(cm_normalized, annot=cm, fmt='d', cmap='Blues',
-                xticklabels=label_encoder.classes_,
-                yticklabels=label_encoder.classes_, vmin=0, vmax=1)
+                xticklabels=present_class_names,
+                yticklabels=present_class_names,
+                vmin=0, vmax=1)
     plt.xlabel("Predicted Label")
     plt.ylabel("True Label")
     plt.title("Confusion Matrix (External Data)")
     plt.tight_layout()
     plt.show()
 else:
-    print("\nNo true labels found in external dataset. Only predictions were saved.")
+    print("\nNo true labels found in external dataset.")
