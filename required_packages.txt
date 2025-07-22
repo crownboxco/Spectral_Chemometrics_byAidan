@@ -8,3 +8,6 @@ adjustText
 statsmodels
 scikit-learn
 torch
+imbalanced-learn
+joblib
+scikit-posthocs
