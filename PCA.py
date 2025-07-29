@@ -12,7 +12,8 @@ df = pd.read_csv(file_path)
 
 # === Extract Features and Labels ===
 X = df.select_dtypes(include=[np.number])  # Raman intensities
-y = df["Species"]
+class_wanted = "Species"
+y = df[class_wanted]
 
 # === Standardize Spectra ===
 X_scaled = StandardScaler().fit_transform(X)
@@ -23,7 +24,7 @@ X_pca = pca.fit_transform(X_scaled)
 
 # === Create DataFrame ===
 pca_df = pd.DataFrame(X_pca, columns=["PC1", "PC2"])
-pca_df["Species"] = y
+pca_df[class_wanted] = y
 
 # === Color map for fixed colors ===
 color_map = {
@@ -63,19 +64,20 @@ def plot_confidence_ellipse(x, y, ax, color, alpha=0.2):
 plt.figure(figsize=(7, 5))
 ax = plt.gca()
 
-groups = pca_df["Species"].unique()
+groups = pca_df[class_wanted].unique()
 for group in groups:
-    subset = pca_df[pca_df["Species"] == group]
+    subset = pca_df[pca_df[class_wanted] == group]
     color = color_map.get(group, "gray")
 
     plt.scatter(subset["PC1"], subset["PC2"], label=group, color=color, edgecolor='k', s=50)
     plot_confidence_ellipse(subset["PC1"], subset["PC2"], ax, color=color)
 
 # Labeling
-plt.xlabel("PC1")
-plt.ylabel("PC2")
-plt.title("PCA Plot of Spectral Embeddings")
-plt.legend(title="Species", loc="upper right")
-
+pc1_var = pca.explained_variance_ratio_[0] * 100
+pc2_var = pca.explained_variance_ratio_[1] * 100
+plt.xlabel(f"PC1 ({pc1_var:.1f}%)")
+plt.ylabel(f"PC2 ({pc2_var:.1f}%)")
+plt.title("PCA Plot")
+plt.legend(title=class_wanted, loc="upper right")
 plt.tight_layout()
 plt.show()

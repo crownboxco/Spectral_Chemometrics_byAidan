@@ -12,7 +12,8 @@ df = pd.read_csv(file_path)
 
 # === Extract Features and Labels ===
 X = df.select_dtypes(include=[np.number])  # Raman intensities
-y = df["Species"]
+class_wanted = "Species"
+y = df[class_wanted]
 
 # === Standardize Spectra ===
 X_scaled = StandardScaler().fit_transform(X)
@@ -23,7 +24,7 @@ X_embedded = tsne.fit_transform(X_scaled)
 
 # === Create DataFrame ===
 tsne_df = pd.DataFrame(X_embedded, columns=["tSNE-1", "tSNE-2"])
-tsne_df["Species"] = y
+tsne_df[class_wanted] = y
 
 # === Color map for fixed colors ===
 color_map = {
@@ -63,9 +64,9 @@ def plot_confidence_ellipse(x, y, ax, color, alpha=0.2):
 plt.figure(figsize=(7, 5))
 ax = plt.gca()
 
-groups = tsne_df["Species"].unique()
+groups = tsne_df[class_wanted].unique()
 for group in groups:
-    subset = tsne_df[tsne_df["Species"] == group]
+    subset = tsne_df[tsne_df[class_wanted] == group]
     color = color_map.get(group, "gray")
 
     plt.scatter(subset["tSNE-1"], subset["tSNE-2"], label=group, color=color, edgecolor='k', s=50)
@@ -74,8 +75,7 @@ for group in groups:
 # Labeling
 plt.xlabel("t-SNE 1")
 plt.ylabel("t-SNE 2")
-plt.title("t-SNE Plot of Spectral Embeddings")
-plt.legend(title="Species", loc="upper right")
-
+plt.title("t-SNE Plot")
+plt.legend(title=class_wanted, loc="upper right")
 plt.tight_layout()
 plt.show()
