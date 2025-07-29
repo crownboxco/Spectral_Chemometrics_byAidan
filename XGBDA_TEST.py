@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # === Load external Raman test data ===
-external_file_path = "external_data.csv"  # Replace with your actual external file
+external_file_path = "processed_external_data.csv"  # Replace with your actual external file
 df_external = pd.read_csv(external_file_path)
 df_external.columns = [
     float(col) if col.replace('.', '', 1).isdigit() else col

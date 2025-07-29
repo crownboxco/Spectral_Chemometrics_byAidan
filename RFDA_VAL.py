@@ -24,17 +24,11 @@ y = label_encoder.fit_transform(y)
 # Split data into training & testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, stratify= y, test_size=0.3, random_state=42) # random-state is a fixed seed (any model in or outside script using 42 will train and test the same way)
 
-# # Define parameter grid for Random Forest
-# rf_param_grid = {
-#     'n_estimators': [50, 100, 200, 500],  # Number of trees
-#     'max_depth': [1, 3, 5, 10, 20],  # Maximum depth of trees
-#     'min_samples_split': [2, 5, 10]  # Minimum samples to split
-# }
 # Define parameter grid for Random Forest
 rf_param_grid = {
-    'n_estimators': [50],  # Number of trees
-    'max_depth': [1, 3],  # Maximum depth of trees
-    'min_samples_split': [2]  # Minimum samples to split
+    'n_estimators': [50, 100, 200, 500],  # Number of trees
+    'max_depth': [1, 3, 5, 10, 20],  # Maximum depth of trees
+    'min_samples_split': [2, 5, 10]  # Minimum samples to split
 }
 
 # Initialize Random Forest model
